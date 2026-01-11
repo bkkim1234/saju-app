@@ -1,0 +1,19 @@
+# 환경 변수 (API 키 보호)
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+.vercel/
+dist/
+build/
+
+# Debug
+npm-debug.log*
+
+# OS
+.DS_Store

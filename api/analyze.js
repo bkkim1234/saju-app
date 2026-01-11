@@ -12,6 +12,15 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // 환경 변수 검증
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    console.error('OPENAI_API_KEY 환경 변수가 설정되지 않았습니다.');
+    return res.status(500).json({
+      error: '서버 설정 오류: API 키가 구성되지 않았습니다.'
+    });
+  }
+
   const { 년주, 월주, 일주, 시주, 오행 } = req.body;
 
   const prompt = `당신은 명리학을 현대적으로 해석하는 전문가입니다.
@@ -46,7 +55,7 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
