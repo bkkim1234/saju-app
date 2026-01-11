@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>사주 분석기</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 { text-align: center; color: #333; }
+    .input-group {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      padding: 15px;
+      background: #4a90d9;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+    button:hover { background: #357abd; }
+    .result {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      display: none;
+    }
+    .saju-box {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .pillar {
+      text-align: center;
+      padding: 15px 5px;
+      background: #f8f8f8;
+      border-radius: 8px;
+    }
+    .pillar-title { font-size: 12px; color: #666; margin-bottom: 5px; }
+    .pillar-char { font-size: 24px; font-weight: bold; color: #333; }
+    .pillar-element { font-size: 11px; color: #888; margin-top: 5px; }
+    .ohang-box { margin: 20px 0; }
+    .ohang-item {
+      display: flex;
+      align-items: center;
+      margin: 8px 0;
+    }
+    .ohang-name { width: 60px; }
+    .ohang-bar {
+      flex: 1;
+      height: 20px;
+      background: #eee;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .ohang-fill {
+      height: 100%;
+      border-radius: 10px;
+      transition: width 0.3s;
+    }
+    .ohang-count { width: 30px; text-align: right; }
+    .interpretation {
+      background: #fffde7;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #ffc107;
+      margin-top: 20px;
+    }
+    .interpretation-title { font-weight: bold; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <h1>사주 분석기</h1>
+
+  <div class="input-group">
+    <label>생년월일</label>
+    <input type="date" id="birthdate" value="1990-05-15">
+
+    <label>출생시간</label>
+    <select id="birthtime">
+      <option value="0">자시 (23:00~01:00)</option>
+      <option value="1">축시 (01:00~03:00)</option>
+      <option value="3">인시 (03:00~05:00)</option>
+      <option value="5">묘시 (05:00~07:00)</option>
+      <option value="7">진시 (07:00~09:00)</option>
+      <option value="9">사시 (09:00~11:00)</option>
+      <option value="11">오시 (11:00~13:00)</option>
+      <option value="13">미시 (13:00~15:00)</option>
+      <option value="15" selected>신시 (15:00~17:00)</option>
+      <option value="17">유시 (17:00~19:00)</option>
+      <option value="19">술시 (19:00~21:00)</option>
+      <option value="21">해시 (21:00~23:00)</option>
+    </select>
+
+    <button onclick="analyze()">분석하기</button>
+  </div>
+
+  <div class="result" id="result">
+    <h3>사주팔자</h3>
+    <div class="saju-box" id="sajuBox"></div>
+
+    <h3>오행 분석</h3>
+    <div class="ohang-box" id="ohangBox"></div>
+
+    <div class="interpretation" id="interpretation"></div>
+  </div>
+
+<script>
+// ============ 기본 데이터 ============
+const 천간 = ['갑', '을', '병', '정', '무', '기', '경', '신', '임', '계'];
+const 지지 = ['자', '축', '인', '묘', '진', '사', '오', '미', '신', '유', '술', '해'];
+
+const 천간오행 = {
+  '갑': '목', '을': '목', '병': '화', '정': '화', '무': '토',
+  '기': '토', '경': '금', '신': '금', '임': '수', '계': '수'
+};
+
+const 지지오행 = {
+  '인': '목', '묘': '목', '사': '화', '오': '화',
+  '진': '토', '술': '토', '축': '토', '미': '토',
+  '신': '금', '유': '금', '해': '수', '자': '수'
+};
+
+const 오행색상 = {
+  '목': '#4CAF50', '화': '#f44336', '토': '#FF9800', '금': '#9E9E9E', '수': '#2196F3'
+};
+
+const 오행해석 = {
+  '목': '성장과 발전을 추구하며, 인자하고 창의적인 성향입니다. 새로운 시작과 도전을 좋아합니다.',
+  '화': '열정적이고 활발하며, 예의 바르고 표현력이 뛰어납니다. 리더십이 있고 사교적입니다.',
+  '토': '안정과 신뢰를 중시하며, 포용력이 크고 중재 능력이 있습니다. 신중하고 현실적입니다.',
+  '금': '결단력이 있고 의리를 중시합니다. 정의감이 강하고 원칙을 지키려 합니다.',
+  '수': '지혜롭고 유연하며, 적응력이 뛰어납니다. 깊이 생각하고 통찰력이 있습니다.'
+};
+
+const 기준일 = new Date(1984, 1, 2);
+
+// ============ 계산 함수 ============
+function get갑자(index) {
+  return 천간[index % 10] + 지지[index % 12];
+}
+
+function calculate년주(year) {
+  const index = ((year - 1984) % 60 + 60) % 60;
+  return get갑자(index);
+}
+
+function calculate월주(year, month) {
+  const 월지인덱스 = (month + 1) % 12;
+  const 년간인덱스 = ((year - 1984) % 10 + 10) % 10;
+  const 월간시작 = [2, 4, 6, 8, 0, 2, 4, 6, 8, 0];
+  const 월간인덱스 = (월간시작[년간인덱스] + month - 1) % 10;
+  return 천간[월간인덱스] + 지지[월지인덱스];
+}
+
+function calculate일주(year, month, day) {
+  const 입력일 = new Date(year, month - 1, day);
+  const 일수차이 = Math.floor((입력일 - 기준일) / (1000 * 60 * 60 * 24));
+  const index = ((일수차이 % 60) + 60) % 60;
+  return get갑자(index);
+}
+
+function calculate시주(year, month, day, hour) {
+  const 시지인덱스 = Math.floor(((hour + 1) % 24) / 2);
+  const 일주 = calculate일주(year, month, day);
+  const 일간인덱스 = 천간.indexOf(일주[0]);
+  const 시간시작 = [0, 2, 4, 6, 8, 0, 2, 4, 6, 8];
+  const 시간인덱스 = (시간시작[일간인덱스] + 시지인덱스) % 10;
+  return 천간[시간인덱스] + 지지[시지인덱스];
+}
+
+function analyze오행(사주) {
+  const count = { '목': 0, '화': 0, '토': 0, '금': 0, '수': 0 };
+  for (const 주 of 사주) {
+    count[천간오행[주[0]]]++;
+    count[지지오행[주[1]]]++;
+  }
+  return count;
+}
+
+// ============ UI 함수 ============
+function analyze() {
+  const dateInput = document.getElementById('birthdate').value;
+  const hour = parseInt(document.getElementById('birthtime').value);
+
+  const [year, month, day] = dateInput.split('-').map(Number);
+
+  const 년주 = calculate년주(year);
+  const 월주 = calculate월주(year, month);
+  const 일주 = calculate일주(year, month, day);
+  const 시주 = calculate시주(year, month, day, hour);
+
+  const pillars = [
+    { title: '시주', char: 시주 },
+    { title: '일주', char: 일주 },
+    { title: '월주', char: 월주 },
+    { title: '년주', char: 년주 }
+  ];
+
+  document.getElementById('sajuBox').innerHTML = pillars.map(p => `
+    <div class="pillar">
+      <div class="pillar-title">${p.title}</div>
+      <div class="pillar-char">${p.char}</div>
+      <div class="pillar-element">${천간오행[p.char[0]]}/${지지오행[p.char[1]]}</div>
+    </div>
+  `).join('');
+
+  const 오행카운트 = analyze오행([년주, 월주, 일주, 시주]);
+  const 오행목록 = ['목', '화', '토', '금', '수'];
+  const 한자 = { '목': '木', '화': '火', '토': '土', '금': '金', '수': '水' };
+
+  document.getElementById('ohangBox').innerHTML = 오행목록.map(o => `
+    <div class="ohang-item">
+      <div class="ohang-name">${o}(${한자[o]})</div>
+      <div class="ohang-bar">
+        <div class="ohang-fill" style="width: ${오행카운트[o] * 12.5}%; background: ${오행색상[o]}"></div>
+      </div>
+      <div class="ohang-count">${오행카운트[o]}</div>
+    </div>
+  `).join('');
+
+  let 최다오행 = 오행목록[0];
+  for (const o of 오행목록) {
+    if (오행카운트[o] > 오행카운트[최다오행]) 최다오행 = o;
+  }
+
+  document.getElementById('interpretation').innerHTML = `
+    <div class="interpretation-title">주요 오행: ${최다오행}(${한자[최다오행]}) - ${오행카운트[최다오행]}개</div>
+    <div>${오행해석[최다오행]}</div>
+  `;
+
+  document.getElementById('result').style.display = 'block';
+}
+
+// 초기 실행
+analyze();
+</script>
+</body>
+</html>
