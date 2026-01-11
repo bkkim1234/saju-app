@@ -8,10 +8,11 @@
     * { box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      max-width: 500px;
+      max-width: 600px;
       margin: 0 auto;
       padding: 20px;
       background: #f5f5f5;
+      line-height: 1.6;
     }
     h1 { text-align: center; color: #333; }
     .input-group {
@@ -41,6 +42,10 @@
       cursor: pointer;
     }
     button:hover { background: #357abd; }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
     .result {
       background: white;
       padding: 20px;
@@ -83,14 +88,44 @@
       transition: width 0.3s;
     }
     .ohang-count { width: 30px; text-align: right; }
-    .interpretation {
-      background: #fffde7;
+    .ai-result {
+      background: #f9f9f9;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      white-space: pre-wrap;
+    }
+    .ai-result h4 {
+      margin-top: 20px;
+      margin-bottom: 10px;
+      color: #4a90d9;
+    }
+    .ai-result h4:first-child { margin-top: 0; }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+    .loading-spinner {
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      border: 3px solid #eee;
+      border-top-color: #4a90d9;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 10px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .error {
+      background: #ffebee;
+      color: #c62828;
       padding: 15px;
       border-radius: 8px;
-      border-left: 4px solid #ffc107;
       margin-top: 20px;
     }
-    .interpretation-title { font-weight: bold; margin-bottom: 10px; }
   </style>
 </head>
 <body>
@@ -116,7 +151,7 @@
       <option value="21">해시 (21:00~23:00)</option>
     </select>
 
-    <button onclick="analyze()">분석하기</button>
+    <button onclick="analyze()" id="analyzeBtn">분석하기</button>
   </div>
 
   <div class="result" id="result">
@@ -126,7 +161,7 @@
     <h3>오행 분석</h3>
     <div class="ohang-box" id="ohangBox"></div>
 
-    <div class="interpretation" id="interpretation"></div>
+    <div id="aiSection"></div>
   </div>
 
 <script>
@@ -147,14 +182,6 @@ const 지지오행 = {
 
 const 오행색상 = {
   '목': '#4CAF50', '화': '#f44336', '토': '#FF9800', '금': '#9E9E9E', '수': '#2196F3'
-};
-
-const 오행해석 = {
-  '목': '성장과 발전을 추구하며, 인자하고 창의적인 성향입니다. 새로운 시작과 도전을 좋아합니다.',
-  '화': '열정적이고 활발하며, 예의 바르고 표현력이 뛰어납니다. 리더십이 있고 사교적입니다.',
-  '토': '안정과 신뢰를 중시하며, 포용력이 크고 중재 능력이 있습니다. 신중하고 현실적입니다.',
-  '금': '결단력이 있고 의리를 중시합니다. 정의감이 강하고 원칙을 지키려 합니다.',
-  '수': '지혜롭고 유연하며, 적응력이 뛰어납니다. 깊이 생각하고 통찰력이 있습니다.'
 };
 
 const 기준일 = new Date(1984, 1, 2);
@@ -202,18 +229,33 @@ function analyze오행(사주) {
   return count;
 }
 
-// ============ UI 함수 ============
-function analyze() {
+// ============ AI 결과 포맷팅 ============
+function formatAIResult(text) {
+  return text
+    .replace(/^## /gm, '')
+    .replace(/^### /gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^(\d+\.\s*)(.*?)$/gm, '<h4>$1$2</h4>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^/, '<p>')
+    .replace(/$/, '</p>');
+}
+
+// ============ 메인 분석 함수 ============
+async function analyze() {
   const dateInput = document.getElementById('birthdate').value;
   const hour = parseInt(document.getElementById('birthtime').value);
+  const btn = document.getElementById('analyzeBtn');
 
   const [year, month, day] = dateInput.split('-').map(Number);
 
+  // 사주 계산
   const 년주 = calculate년주(year);
   const 월주 = calculate월주(year, month);
   const 일주 = calculate일주(year, month, day);
   const 시주 = calculate시주(year, month, day, hour);
 
+  // 사주팔자 표시
   const pillars = [
     { title: '시주', char: 시주 },
     { title: '일주', char: 일주 },
@@ -229,6 +271,7 @@ function analyze() {
     </div>
   `).join('');
 
+  // 오행 분석
   const 오행카운트 = analyze오행([년주, 월주, 일주, 시주]);
   const 오행목록 = ['목', '화', '토', '금', '수'];
   const 한자 = { '목': '木', '화': '火', '토': '土', '금': '金', '수': '水' };
@@ -243,21 +286,50 @@ function analyze() {
     </div>
   `).join('');
 
-  let 최다오행 = 오행목록[0];
-  for (const o of 오행목록) {
-    if (오행카운트[o] > 오행카운트[최다오행]) 최다오행 = o;
-  }
+  document.getElementById('result').style.display = 'block';
 
-  document.getElementById('interpretation').innerHTML = `
-    <div class="interpretation-title">주요 오행: ${최다오행}(${한자[최다오행]}) - ${오행카운트[최다오행]}개</div>
-    <div>${오행해석[최다오행]}</div>
+  // AI 분석 요청
+  document.getElementById('aiSection').innerHTML = `
+    <div class="loading">
+      <div class="loading-spinner"></div>
+      <div>AI가 사주를 분석하고 있습니다...</div>
+    </div>
   `;
 
-  document.getElementById('result').style.display = 'block';
-}
+  btn.disabled = true;
+  btn.textContent = '분석 중...';
 
-// 초기 실행
-analyze();
+  try {
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        년주, 월주, 일주, 시주,
+        오행: 오행카운트
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      document.getElementById('aiSection').innerHTML = `
+        <div class="error">분석 중 오류가 발생했습니다: ${data.error}</div>
+      `;
+    } else {
+      document.getElementById('aiSection').innerHTML = `
+        <h3>AI 사주 해석</h3>
+        <div class="ai-result">${formatAIResult(data.result)}</div>
+      `;
+    }
+  } catch (error) {
+    document.getElementById('aiSection').innerHTML = `
+      <div class="error">서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.</div>
+    `;
+  }
+
+  btn.disabled = false;
+  btn.textContent = '분석하기';
+}
 </script>
 </body>
 </html>
